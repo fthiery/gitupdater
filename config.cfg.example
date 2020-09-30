@@ -1,5 +1,6 @@
 [DEFAULT]
 ignore_untracked_files = yes
+update_interval = 1m
 
 [gitupdater]
 url = https://github.com/fthiery/gitupdater.git

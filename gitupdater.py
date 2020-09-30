@@ -5,6 +5,10 @@ import argparse
 import sys
 import logging
 import subprocess
+import time
+
+
+LAST_UPDATE_FILE = Path("/var/tmp/gitupdater.lock")
 
 
 def setup_logging(verbose=False):
@@ -17,11 +21,24 @@ def setup_logging(verbose=False):
     )
 
 
+def parse_interval_sec(string):
+    units = {
+        "s": 1,
+        "m": 60,
+        "h": 3600,
+        "d": 86400,
+    }
+
+    for suffix, value in units.items():
+        if string.endswith(suffix):
+            prefix = float(string.split(suffix)[0])
+            return int(prefix * value)
+
+
 class GitUpdater:
     def __init__(self, args, config):
         self.args = args
         self.config = config
-        logging.debug("Configuration:")
         self.load_default()
         for section in config.sections():
             section_dict = dict(config[section])
@@ -30,8 +47,17 @@ class GitUpdater:
             self.process_section(config[section])
 
     def load_default(self):
-        #self.config["DEFAULT"]
-        pass
+        update_interval = parse_interval_sec(self.config["DEFAULT"].get("update_interval", "5m"))
+        if not LAST_UPDATE_FILE.exists():
+            LAST_UPDATE_FILE.touch()
+        else:
+            last_date = LAST_UPDATE_FILE.stat().st_mtime
+            elapsed = time.time() - last_date
+            if elapsed < update_interval and not self.args.create:
+                logging.debug(f"Only {int(elapsed)}s elapsed, not attempting update before {update_interval}s")
+                sys.exit(0)
+            else:
+                LAST_UPDATE_FILE.touch()
 
     def process_section(self, section):
         git_path = Path(section["path"]).expanduser()
@@ -122,10 +148,6 @@ if __name__ == '__main__':
         help="Checkout new repos if needed",
         action="store_true"
     )
-
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(1)
 
     args = parser.parse_args()
     setup_logging(args.verbose)
