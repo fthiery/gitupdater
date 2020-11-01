@@ -7,6 +7,15 @@ import logging
 import subprocess
 import time
 
+import gi
+gi.require_version('Notify', '0.7')
+from gi.repository import Notify # noqa
+Notify.init("Gitupdater")
+
+
+def notify(message):
+    Notify.Notification.new("Gitupdater", message, "dialog-information").show()
+
 
 LAST_UPDATE_FILE = Path("/var/tmp/gitupdater.lock")
 
@@ -85,7 +94,10 @@ class GitUpdater:
         logging.debug(f"Updating {path}")
         cmd = f"git -C {path} pull --rebase"
         if self.run_cmd(cmd) != "Already up to date.":
-            logging.info(f"{path} updated")
+            msg = f"{path} updated"
+            logging.info(msg)
+            if self.args.notify:
+                notify(msg)
 
     def git_checkout(self, git_url, path):
         cmd = f"git clone {git_url} {path}"
@@ -133,6 +145,12 @@ if __name__ == '__main__':
         "-v",
         "--verbose",
         help="set verbosity to DEBUG",
+        action="store_true"
+    )
+
+    parser.add_argument(
+        "--notify",
+        help="enable desktop notifications",
         action="store_true"
     )
 
