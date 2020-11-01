@@ -1,0 +1,10 @@
+[Unit]
+Description=Run gitupdater script periodically
+
+[Timer]
+# run every 15 minutes
+OnCalendar=*:0/15
+Persistent=true
+
+[Install]
+WantedBy=timers.target
